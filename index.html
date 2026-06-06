@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Báo giá Website — Mắt Bão WS</title>
+<!--
+  ════════════════════════════════════════════════════════════════
+  CÔNG CỤ BÁO GIÁ WEBSITE — MẮT BÃO WS
+  ════════════════════════════════════════════════════════════════
+  CÁCH DÙNG CHO SELLER:
+  1. Mở Google Sheet 200 CTKM → File → Chia sẻ → "Bất kỳ ai có
+     đường liên kết – Người xem". (Bắt buộc, nếu không tool sẽ
+     dùng dữ liệu mẫu dự phòng.)
+  2. Cá nhân hóa cho từng khách bằng tham số trên URL:
+       ?kh=3F Store&mota=chuỗi cửa hàng thú cưng&color=%230A4FC4&accent=%23FF8A3D
+     - kh     : tên khách hàng
+     - mota   : mô tả ngắn ngành nghề
+     - color  : màu chủ đạo (mã hex, %23 = dấu #)
+     - accent : màu nhấn
+  3. Đoạn "Thuyết phục" có thể bấm vào sửa trực tiếp (contenteditable)
+     trước khi gửi khách — dán nội dung do Gem/AI viết vào đây.
+  4. Khách tick tính năng → tổng tiền tự cộng → bấm "Tải báo giá
+     Excel" → gửi lại file .xlsx cho seller.
+  ════════════════════════════════════════════════════════════════
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --brand:#0A4FC4;
+    --brand-dark:#073a8f;
+    --accent:#FF8A3D;
+    --ink:#1b2430;
+    --muted:#5b6676;
+    --bg:#f6f8fc;
+    --card:#ffffff;
+    --line:#e4e9f2;
+    --radius:18px;
+    --shadow:0 8px 30px rgba(15,35,80,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:'Be Vietnam Pro',sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;padding-bottom:90px}
+  h1,h2,h3{font-weight:800;line-height:1.2}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+  /* ─── HERO ─── */
+  .hero{position:relative;overflow:hidden;background:
+    radial-gradient(900px 420px at 85% -10%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%),
+    radial-gradient(700px 380px at -10% 110%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+    #fff;
+    border-bottom:1px solid var(--line)}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center;padding-top:64px;padding-bottom:64px}
+  .badge{display:inline-block;background:color-mix(in srgb, var(--brand) 10%, #fff);color:var(--brand);
+    font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    padding:6px 14px;border-radius:999px;border:1px solid color-mix(in srgb, var(--brand) 25%, #fff)}
+  .hero h1{font-size:clamp(2rem,4.6vw,3.2rem);margin:18px 0 14px}
+  .hero h1 .kh{color:var(--brand)}
+  .hero p.sub{color:var(--muted);font-size:1.05rem;max-width:520px;margin-bottom:26px}
+  .btn{display:inline-block;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:1rem;
+    padding:14px 28px;border-radius:14px;text-decoration:none;transition:.18s}
+  .btn-brand{background:var(--brand);color:#fff}
+  .btn-brand:hover{background:var(--brand-dark);transform:translateY(-2px)}
+  .btn-ghost{background:#fff;color:var(--brand);border:1.5px solid color-mix(in srgb, var(--brand) 35%, #fff);margin-left:10px}
+  .btn-ghost:hover{border-color:var(--brand)}
+
+  /* live quote preview card */
+  .quote-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px;position:relative}
+  .quote-card::before{content:"";position:absolute;inset:0 0 auto 0;height:6px;border-radius:var(--radius) var(--radius) 0 0;
+    background:linear-gradient(90deg,var(--brand),var(--accent))}
+  .quote-card h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:14px}
+  .qline{display:flex;justify-content:space-between;font-size:.95rem;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .qline b{font-variant-numeric:tabular-nums}
+  .qtotal{display:flex;justify-content:space-between;align-items:baseline;padding-top:14px}
+  .qtotal .num{font-size:1.9rem;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums}
+  .qtier{margin-top:12px;background:color-mix(in srgb, var(--accent) 12%, #fff);border:1px solid color-mix(in srgb, var(--accent) 35%, #fff);
+    color:#9a4b00;font-weight:600;font-size:.9rem;border-radius:12px;padding:10px 14px}
+
+  /* ─── SECTIONS ─── */
+  section{padding:56px 0}
+  .sec-title{font-size:clamp(1.5rem,3vw,2.1rem);margin-bottom:8px}
+  .sec-sub{color:var(--muted);margin-bottom:32px;max-width:640px}
+
+  /* persuasion */
+  .persuade{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:32px;position:relative}
+  .persuade[contenteditable]:hover{outline:2px dashed color-mix(in srgb, var(--brand) 35%, #fff);outline-offset:4px}
+  .persuade .hint{position:absolute;top:-11px;right:18px;background:var(--accent);color:#fff;font-size:.7rem;font-weight:700;
+    padding:3px 10px;border-radius:999px;letter-spacing:.05em}
+  .persuade p{margin-bottom:12px}
+  .persuade p:last-child{margin-bottom:0}
+
+  /* trust */
+  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:28px}
+  .trust .t{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center}
+  .trust .t .ic{width:42px;height:42px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb, var(--accent) 16%, #fff);color:#c05a00;font-weight:800;font-size:1.1rem}
+  .trust .t b{display:block;font-size:.95rem;margin-bottom:3px}
+  .trust .t span{font-size:.8rem;color:var(--muted)}
+
+  /* packages */
+  .pk-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);font-size:.92rem}
+  .pk-table th,.pk-table td{padding:13px 16px;border-bottom:1px solid var(--line);text-align:center}
+  .pk-table td:first-child,.pk-table th:first-child{text-align:left;font-weight:600}
+  .pk-table thead th{background:#f1f5fb;font-weight:800}
+  .pk-table thead th .price{display:block;font-size:.8rem;color:var(--brand);font-weight:700;margin-top:2px}
+  .pk-table tbody tr:last-child td{border-bottom:none}
+  .pk-table .rec{background:color-mix(in srgb, var(--brand) 7%, #fff)}
+  .pk-table thead th.rec{background:var(--brand);color:#fff}
+  .pk-table thead th.rec .price{color:#ffd9b8}
+  .check{color:#0d9455;font-weight:800}
+
+  /* personalization */
+  .levels{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .lv{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:18px;cursor:pointer;transition:.15s;display:block}
+  .lv:hover{border-color:color-mix(in srgb, var(--brand) 45%, #fff)}
+  .lv input{display:none}
+  .lv .lv-name{font-weight:700;font-size:.95rem;display:flex;justify-content:space-between;align-items:center}
+  .lv .lv-fee{color:var(--brand);font-weight:800;font-size:.9rem;font-variant-numeric:tabular-nums}
+  .lv .lv-desc{font-size:.8rem;color:var(--muted);margin-top:6px}
+  .lv:has(input:checked){border-color:var(--brand);background:color-mix(in srgb, var(--brand) 6%, #fff);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--brand) 14%, transparent)}
+
+  /* checklist */
+  .toolbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+  .search{flex:1;min-width:220px;padding:12px 16px;border:1.5px solid var(--line);border-radius:12px;font-family:inherit;font-size:.95rem;background:#fff}
+  .search:focus{outline:none;border-color:var(--brand)}
+  .src-badge{font-size:.75rem;font-weight:700;padding:6px 12px;border-radius:999px}
+  .src-live{background:#e3f7ec;color:#0d9455;border:1px solid #b5e8cd}
+  .src-fallback{background:#fdeeee;color:#c0392b;border:1px solid #f3c7c7}
+  .feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .feat{display:flex;align-items:flex-start;gap:12px;background:var(--card);border:1.5px solid var(--line);
+    border-radius:12px;padding:13px 15px;cursor:pointer;transition:.13s;font-size:.92rem}
+  .feat:hover{border-color:color-mix(in srgb, var(--brand) 40%, #fff)}
+  .feat input{width:18px;height:18px;margin-top:3px;accent-color:var(--brand);flex-shrink:0}
+  .feat .f-name{font-weight:500}
+  .feat .f-price{margin-left:auto;font-weight:800;color:var(--brand);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .feat:has(input:checked){border-color:var(--brand);background:color-mix(in srgb, var(--brand) 5%, #fff)}
+  .feat .f-contact{margin-left:auto;font-weight:700;color:var(--accent);font-size:.8rem;white-space:nowrap}
+  .group-h{grid-column:1/-1;font-weight:800;font-size:1rem;margin-top:14px;color:var(--brand-dark);
+    border-left:4px solid var(--accent);padding-left:10px}
+  #loadStatus{padding:30px;text-align:center;color:var(--muted)}
+
+  /* sticky bar */
+  .sticky{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid var(--line);
+    box-shadow:0 -8px 30px rgba(15,35,80,.1)}
+  .sticky .wrap{display:flex;align-items:center;gap:18px;padding-top:13px;padding-bottom:13px;flex-wrap:wrap}
+  .sticky .tot{font-weight:800;font-size:1.25rem;color:var(--brand);font-variant-numeric:tabular-nums}
+  .sticky .cnt{color:var(--muted);font-size:.85rem}
+  .sticky .grow{flex:1}
+  .name-in{padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;font-family:inherit;font-size:.9rem;width:200px}
+
+  footer{padding:40px 0;text-align:center;color:var(--muted);font-size:.85rem}
+
+  @media(max-width:860px){
+    .hero .wrap{grid-template-columns:1fr;gap:28px;padding-top:44px;padding-bottom:44px}
+    .trust,.levels{grid-template-columns:repeat(2,1fr)}
+    .feat-grid{grid-template-columns:1fr}
+    .pk-wrap{overflow-x:auto}
+    .pk-table{min-width:680px}
+    .name-in{width:140px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 1. HERO ═══════════ -->
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="badge">Mắt Bão WS · Giải pháp Website</span>
+      <h1>Website chuyên nghiệp cho <span class="kh" id="khName">Quý khách</span></h1>
+      <p class="sub" id="khDesc">Sở hữu website riêng — không phụ thuộc sàn TMĐT, làm chủ dữ liệu khách hàng, bán hàng 24/7. Tick chọn tính năng bên dưới để nhận báo giá tức thì.</p>
+      <a href="#checklist" class="btn btn-brand">Tạo báo giá ngay ↓</a>
+      <a href="#goipack" class="btn btn-ghost">Xem các gói</a>
+    </div>
+    <aside class="quote-card">
+      <h3>Báo giá trực tiếp</h3>
+      <div class="qline"><span>Web Hero (gói nền)</span><b>2.000.000đ</b></div>
+      <div class="qline"><span>Cá nhân hóa giao diện</span><b id="qLevel">0đ</b></div>
+      <div class="qline"><span>Tính năng đã chọn (<span id="qCount">0</span>)</span><b id="qAddons">0đ</b></div>
+      <div class="qtotal"><span>Tổng dự kiến</span><span class="num" id="qTotal">2.000.000đ</span></div>
+      <div class="qtier" id="qTier">Gói đề xuất: Web Hero</div>
+    </aside>
+  </div>
+</header>
+
+<!-- ═══════════ 2. THUYẾT PHỤC ═══════════ -->
+<section>
+  <div class="wrap">
+    <h2 class="sec-title">Vì sao nên đầu tư website ngay bây giờ?</h2>
+    <p class="sec-sub">Seller có thể bấm vào khung dưới để sửa nội dung cho từng khách trước khi gửi.</p>
+    <div class="persuade" contenteditable="true" spellcheck="false">
+      <span class="hint">✎ Bấm để sửa</span>
+      <p><strong>Bán trên sàn TMĐT là đi thuê mặt bằng — website là tài sản của riêng bạn.</strong> Mỗi đơn hàng trên sàn mất 10–16% phí, dữ liệu khách hàng thuộc về sàn, và bạn luôn bị đặt cạnh đối thủ rẻ hơn một nghìn đồng.</p>
+      <p>Website riêng giúp bạn giữ trọn lợi nhuận, chủ động remarketing qua Zalo/Email, xây dựng thương hiệu chuyên nghiệp và xuất hiện trên Google khi khách tìm kiếm sản phẩm của bạn.</p>
+      <p>Với Mắt Bão WS, bạn không cần biết kỹ thuật: chỉ cần gửi link mẫu yêu thích, chúng tôi lo phần còn lại — từ giao diện, nội dung đến vận hành.</p>
+    </div>
+    <div class="trust">
+      <div class="t"><div class="ic">✓</div><b>Demo trước</b><span>Xem demo sau khi thanh toán 30%</span></div>
+      <div class="t"><div class="ic">↩</div><b>Hoàn tiền 5 ngày</b><span>Vô điều kiện nếu không hài lòng</span></div>
+      <div class="t"><div class="ic">⛨</div><b>Bảo hành 12 tháng</b><span>Sau khi bàn giao mã nguồn</span></div>
+      <div class="t"><div class="ic">⌘</div><b>Bàn giao source</b><span>Bạn sở hữu toàn bộ mã nguồn</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 3. SO SÁNH GÓI ═══════════ -->
+<section id="goipack" style="padding-top:0">
+  <div class="wrap">
+    <h2 class="sec-title">Web 2 triệu có gì — web cao hơn có gì?</h2>
+    <p class="sec-sub">Tất cả các gói đều gồm: hosting không giới hạn, SSL, responsive mobile, SEO cơ bản, bàn giao mã nguồn.</p>
+    <div class="pk-wrap">
+    <table class="pk-table" id="pkTable">
+      <thead><tr>
+        <th>Hạng mục</th>
+        <th data-tier="Hero">Hero<span class="price">2.000.000đ</span></th>
+        <th data-tier="Growth">Growth<span class="price">4 – 6 triệu</span></th>
+        <th data-tier="Business">Business<span class="price">8 – 12 triệu</span></th>
+        <th data-tier="Pro">Pro<span class="price">15 – 25 triệu</span></th>
+      </tr></thead>
+      <tbody>
+        <tr><td>Sản phẩm / bài viết</td><td>70</td><td>200</td><td>500</td><td>1.000</td></tr>
+        <tr><td>Lấy dữ liệu từ sàn TMĐT, web khác</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+        <tr><td>Form thu thập thông tin</td><td>Google Sheet</td><td>CRM Lead</td><td>CRM Lead</td><td>CRM Lead</td></tr>
+        <tr><td>Đặt hàng</td><td>Form cơ bản</td><td>Form cơ bản</td><td>Giỏ hàng</td><td>Giỏ hàng</td></tr>
+        <tr><td>Số lần chỉnh giao diện</td><td>10</td><td>20</td><td>30</td><td>50</td></tr>
+        <tr><td>Sao lưu dữ liệu</td><td>3 ngày/lần</td><td>Hàng ngày</td><td>Hàng ngày</td><td>Hàng ngày</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 4. CÁ NHÂN HÓA ═══════════ -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h2 class="sec-title">Mức độ cá nhân hóa giao diện</h2>
+    <p class="sec-sub">Chọn một mức phù hợp với yêu cầu thiết kế của bạn.</p>
+    <div class="levels">
+      <label class="lv"><input type="radio" name="level" value="0" checked>
+        <span class="lv-name">Level 1 <span class="lv-fee">+0đ</span></span>
+        <span class="lv-desc">Đổi màu, banner, icon trên giao diện có sẵn</span></label>
+      <label class="lv"><input type="radio" name="level" value="500000">
+        <span class="lv-name">Level 2 <span class="lv-fee">+500.000đ</span></span>
+        <span class="lv-desc">Đổi bố cục, thêm section, sửa sitemap</span></label>
+      <label class="lv"><input type="radio" name="level" value="1500000">
+        <span class="lv-name">Level 3 <span class="lv-fee">+1.500.000đ</span></span>
+        <span class="lv-desc">Clone giao diện web mẫu giống 80–90%</span></label>
+      <label class="lv"><input type="radio" name="level" value="3000000">
+        <span class="lv-name">Level 4 <span class="lv-fee">+3.000.000đ</span></span>
+        <span class="lv-desc">Thiết kế riêng hoàn toàn, không dùng template</span></label>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 5. CHECKLIST TÍNH NĂNG ═══════════ -->
+<section id="checklist" style="padding-top:0">
+  <div class="wrap">
+    <h2 class="sec-title">Chọn tính năng — giá cộng ngay lập tức</h2>
+    <p class="sec-sub">Danh sách được đồng bộ trực tiếp từ kho tính năng của Mắt Bão WS, luôn là phiên bản mới nhất.</p>
+    <div class="toolbar">
+      <input class="search" id="searchBox" type="text" placeholder="Tìm tính năng… (vd: giỏ hàng, Zalo, CRM)">
+      <span class="src-badge src-fallback" id="srcBadge">Đang tải…</span>
+    </div>
+    <div id="loadStatus">Đang tải danh sách tính năng từ Google Sheet…</div>
+    <div class="feat-grid" id="featGrid"></div>
+  </div>
+</section>
+
+<footer>Báo giá có hiệu lực 30 ngày · Mắt Bão WS · Giá chưa gồm tên miền · Gia hạn từ năm 2: 2.388.000đ/năm</footer>
+
+<!-- ═══════════ STICKY BAR ═══════════ -->
+<div class="sticky">
+  <div class="wrap">
+    <div>
+      <div class="tot" id="stTotal">2.000.000đ</div>
+      <div class="cnt"><span id="stCount">0</span> tính năng đã chọn · <span id="stTier">Web Hero</span></div>
+    </div>
+    <div class="grow"></div>
+    <input class="name-in" id="custName" type="text" placeholder="Tên khách hàng">
+    <button class="btn btn-brand" id="btnExcel">⬇ Tải báo giá Excel</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════ CẤU HÌNH ═══════════════ */
+const CONFIG = {
+  SHEET_ID: '1Cb8Qu1LfoVuXtoTEoTXEk5PVIUK4mMTWZcwBzUObyVs',
+  GID: '340722603',
+  BASE_PRICE: 2000000,            // Web Hero
+  // Nếu sheet đổi tên cột, sửa các từ khóa nhận diện tại đây:
+  NAME_HINTS:  ['hạng mục','tính năng','tên','chức năng','ctkm','nội dung','mô tả'],
+  PRICE_HINTS: ['giá','price','phí','tiền','vnđ','vnd','đơn giá'],
+  GROUP_HINTS: ['nhóm','phân loại','danh mục','loại','group']
+};
+
+/* ─── Tham số URL: cá nhân hóa cho từng khách ─── */
+const P = new URLSearchParams(location.search);
+if (P.get('kh'))   { document.getElementById('khName').textContent = P.get('kh');
+                     document.getElementById('custName').value = P.get('kh');
+                     document.title = 'Báo giá Website — ' + P.get('kh'); }
+if (P.get('mota'))   document.getElementById('khDesc').textContent = P.get('mota');
+if (P.get('color'))  document.documentElement.style.setProperty('--brand', P.get('color'));
+if (P.get('accent')) document.documentElement.style.setProperty('--accent', P.get('accent'));
+
+/* ═══════════════ ĐỌC GOOGLE SHEET (live) ═══════════════ */
+const fmt = n => n.toLocaleString('vi-VN') + 'đ';
+
+function parsePrice(v){
+  if (v == null) return null;
+  if (typeof v === 'number') return v > 0 && v < 10000 ? v * 1000 : v; // sheet ghi 300 nghĩa là 300k? -> chỉ khi quá nhỏ
+  let s = String(v).toLowerCase().trim();
+  if (!s) return null;
+  if (/(liên hệ|contact|tùy|thỏa thuận)/.test(s)) return 0;       // 0 = báo giá riêng
+  let mult = 1;
+  if (/tr|triệu/.test(s)) mult = 1e6;
+  else if (/k(?![a-z])|nghìn|ngàn/.test(s)) mult = 1e3;
+  const num = parseFloat(s.replace(/[^\d.,]/g,'').replace(/\./g,'').replace(',','.'));
+  if (isNaN(num)) return null;
+  let val = num * mult;
+  if (mult === 1 && val > 0 && val < 10000) val *= 1000;          // "300" -> 300.000
+  return Math.round(val);
+}
+
+function pickColumns(headers, rows){
+  const low = headers.map(h => String(h||'').toLowerCase());
+  const find = hints => low.findIndex(h => hints.some(k => h.includes(k)));
+  let nameCol = find(CONFIG.NAME_HINTS);
+  let priceCol = find(CONFIG.PRICE_HINTS);
+  let groupCol = find(CONFIG.GROUP_HINTS);
+  // Heuristic dự phòng nếu không khớp tiêu đề
+  if (priceCol < 0){
+    let best = -1, bestScore = 0;
+    for (let c = 0; c < headers.length; c++){
+      let score = rows.reduce((a,r)=> a + (parsePrice(r[c]) !== null ? 1 : 0), 0);
+      if (score > bestScore){ bestScore = score; best = c; }
+    }
+    priceCol = best;
+  }
+  if (nameCol < 0){
+    let best = -1, bestLen = 0;
+    for (let c = 0; c < headers.length; c++){
+      if (c === priceCol) continue;
+      let len = rows.reduce((a,r)=> a + String(r[c]||'').length, 0);
+      if (len > bestLen){ bestLen = len; best = c; }
+    }
+    nameCol = best;
+  }
+  return {nameCol, priceCol, groupCol};
+}
+
+function rowsToFeatures(headers, rows){
+  const {nameCol, priceCol, groupCol} = pickColumns(headers, rows);
+  const out = [];
+  for (const r of rows){
+    const name = String(r[nameCol]||'').trim();
+    if (!name || name.length < 2) continue;
+    const price = parsePrice(r[priceCol]);
+    if (price === null) continue;
+    out.push({ name, price, group: groupCol >= 0 ? String(r[groupCol]||'').trim() : '' });
+  }
+  return out;
+}
+
+async function loadFromGviz(){
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json&gid=${CONFIG.GID}`;
+  const txt = await (await fetch(url)).text();
+  const json = JSON.parse(txt.substring(txt.indexOf('{'), txt.lastIndexOf('}')+1));
+  const cols = json.table.cols.map(c => c.label || '');
+  let rows = json.table.rows.map(r => (r.c||[]).map(c => c ? (c.f ?? c.v) : ''));
+  // Nếu cols không có label, dòng đầu là tiêu đề
+  let headers = cols;
+  if (cols.every(c => !c)) { headers = rows[0] || []; rows = rows.slice(1); }
+  return rowsToFeatures(headers, rows);
+}
+
+async function loadFromCsv(){
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/export?format=csv&gid=${CONFIG.GID}`;
+  const txt = await (await fetch(url)).text();
+  if (txt.trim().startsWith('<')) throw new Error('not csv');
+  // CSV parser tối giản có hỗ trợ dấu ngoặc kép
+  const rows = [];
+  let row = [], cell = '', q = false;
+  for (let i = 0; i < txt.length; i++){
+    const ch = txt[i];
+    if (q){ if (ch === '"'){ if (txt[i+1] === '"'){cell+='"';i++;} else q=false; } else cell += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell=''; }
+    else if (ch === '\n'){ row.push(cell.replace(/\r$/,'')); rows.push(row); row=[]; cell=''; }
+    else cell += ch;
+  }
+  if (cell || row.length){ row.push(cell); rows.push(row); }
+  return rowsToFeatures(rows[0]||[], rows.slice(1));
+}
+
+/* Dữ liệu mẫu dự phòng — chỉ dùng khi không đọc được Sheet */
+const FALLBACK = [
+  {group:'Thu Lead & CRM', name:'Landing Page chiến dịch', price:300000},
+  {group:'Thu Lead & CRM', name:'Form đăng ký tư vấn', price:300000},
+  {group:'Thu Lead & CRM', name:'Popup thu lead', price:200000},
+  {group:'Thu Lead & CRM', name:'CRM quản lý lead', price:500000},
+  {group:'Thu Lead & CRM', name:'Tracking nguồn lead (UTM)', price:500000},
+  {group:'Bán hàng', name:'Giỏ hàng & thanh toán online', price:1500000},
+  {group:'Bán hàng', name:'Mã giảm giá / Voucher', price:400000},
+  {group:'Bán hàng', name:'Flash sale đếm ngược', price:500000},
+  {group:'Bán hàng', name:'Đồng bộ sản phẩm từ Shopee/Lazada', price:1000000},
+  {group:'Chăm sóc khách', name:'Chat Zalo OA tích hợp', price:300000},
+  {group:'Chăm sóc khách', name:'Thông báo đơn hàng qua Zalo/Email', price:400000},
+  {group:'Chăm sóc khách', name:'Đánh giá sản phẩm có hình ảnh', price:300000},
+  {group:'Marketing', name:'Blog chuẩn SEO', price:500000},
+  {group:'Marketing', name:'Email marketing tự động', price:600000},
+  {group:'Marketing', name:'Tích hợp Google Analytics + Pixel', price:200000},
+  {group:'Nâng cao', name:'Đa ngôn ngữ (mỗi ngôn ngữ)', price:800000},
+  {group:'Nâng cao', name:'Tài khoản thành viên & tích điểm', price:1200000},
+  {group:'Nâng cao', name:'AI chatbot tư vấn sản phẩm', price:0},
+];
+
+/* ═══════════════ RENDER CHECKLIST ═══════════════ */
+let FEATURES = [];
+
+function render(features){
+  const grid = document.getElementById('featGrid');
+  grid.innerHTML = '';
+  let lastGroup = null;
+  features.forEach((f, i) => {
+    if (f.group && f.group !== lastGroup){
+      const h = document.createElement('div');
+      h.className = 'group-h'; h.textContent = f.group;
+      grid.appendChild(h); lastGroup = f.group;
+    }
+    const lb = document.createElement('label');
+    lb.className = 'feat';
+    lb.dataset.search = (f.group + ' ' + f.name).toLowerCase();
+    lb.innerHTML = `<input type="checkbox" data-i="${i}">
+      <span class="f-name">${f.name}</span>
+      ${f.price > 0 ? `<span class="f-price">+${fmt(f.price)}</span>` : `<span class="f-contact">Báo giá riêng</span>`}`;
+    grid.appendChild(lb);
+  });
+  document.getElementById('loadStatus').style.display = 'none';
+  grid.addEventListener('change', calc);
+}
+
+async function init(){
+  const badge = document.getElementById('srcBadge');
+  try {
+    let feats = [];
+    try { feats = await loadFromGviz(); } catch(e){ feats = await loadFromCsv(); }
+    if (!feats.length) throw new Error('empty');
+    FEATURES = feats;
+    badge.textContent = `● Dữ liệu live từ Google Sheet (${feats.length} tính năng)`;
+    badge.className = 'src-badge src-live';
+  } catch(e){
+    FEATURES = FALLBACK;
+    badge.textContent = '⚠ Dùng dữ liệu mẫu — kiểm tra quyền chia sẻ Sheet';
+    badge.className = 'src-badge src-fallback';
+  }
+  render(FEATURES);
+  calc();
+}
+
+/* ─── Tìm kiếm ─── */
+document.getElementById('searchBox').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase().trim();
+  document.querySelectorAll('.feat').forEach(el => {
+    el.style.display = !q || el.dataset.search.includes(q) ? '' : 'none';
+  });
+  document.querySelectorAll('.group-h').forEach(h => h.style.display = q ? 'none' : '');
+});
+
+/* ═══════════════ TÍNH GIÁ ═══════════════ */
+const TIERS = [
+  [3000000,'Web Hero'],[7000000,'Web Growth'],[13000000,'Web Business'],
+  [26000000,'Web Pro'],[40000000,'Web System'],[Infinity,'Enterprise (báo giá riêng)']
+];
+
+function selected(){
+  return [...document.querySelectorAll('#featGrid input:checked')].map(c => FEATURES[+c.dataset.i]);
+}
+function levelFee(){
+  return +(document.querySelector('input[name=level]:checked')?.value || 0);
+}
+
+function calc(){
+  const sel = selected();
+  const addons = sel.reduce((a,f)=> a + f.price, 0);
+  const lf = levelFee();
+  const total = CONFIG.BASE_PRICE + lf + addons;
+  const tier = TIERS.find(t => total <= t[0])[1];
+  const hasContact = sel.some(f => f.price === 0);
+
+  document.getElementById('qLevel').textContent = fmt(lf);
+  document.getElementById('qAddons').textContent = fmt(addons);
+  document.getElementById('qCount').textContent = sel.length;
+  document.getElementById('qTotal').textContent = fmt(total) + (hasContact ? '+' : '');
+  document.getElementById('qTier').textContent = 'Gói đề xuất: ' + tier;
+  document.getElementById('stTotal').textContent = fmt(total) + (hasContact ? '+' : '');
+  document.getElementById('stCount').textContent = sel.length;
+  document.getElementById('stTier').textContent = tier;
+
+  // Highlight cột gói đề xuất trong bảng so sánh
+  const map = {'Web Hero':1,'Web Growth':2,'Web Business':3,'Web Pro':4};
+  const col = map[tier] || 0;
+  document.querySelectorAll('#pkTable thead th').forEach((th,i)=> th.classList.toggle('rec', i===col));
+  document.querySelectorAll('#pkTable tbody tr').forEach(tr =>
+    [...tr.children].forEach((td,i)=> td.classList.toggle('rec', i===col)));
+}
+document.querySelectorAll('input[name=level]').forEach(r => r.addEventListener('change', calc));
+
+/* ═══════════════ XUẤT EXCEL (SheetJS) ═══════════════ */
+document.getElementById('btnExcel').addEventListener('click', () => {
+  const sel = selected();
+  const lf = levelFee();
+  const lvName = document.querySelector('input[name=level]:checked').closest('.lv').querySelector('.lv-desc').textContent;
+  const addons = sel.reduce((a,f)=> a + f.price, 0);
+  const total = CONFIG.BASE_PRICE + lf + addons;
+  const tier = TIERS.find(t => total <= t[0])[1];
+  const kh = document.getElementById('custName').value || 'Khách hàng';
+  const today = new Date().toLocaleDateString('vi-VN');
+
+  const aoa = [
+    ['BÁO GIÁ WEBSITE — MẮT BÃO WS'],
+    ['Khách hàng', kh],
+    ['Ngày báo giá', today],
+    ['Gói đề xuất', tier],
+    [],
+    ['STT','Hạng mục','Ghi chú','Thành tiền (VNĐ)'],
+    [1,'Web Hero (gói nền)','Giao diện, logo, banner, 70 SP, 70 bài viết, hosting, SSL', CONFIG.BASE_PRICE],
+    [2,'Cá nhân hóa giao diện', lvName, lf],
+  ];
+  sel.forEach((f,i)=> aoa.push([i+3, f.name, f.group || 'Tính năng bổ sung', f.price === 0 ? 'Báo giá riêng' : f.price]));
+  aoa.push([]);
+  aoa.push(['','','TỔNG CỘNG', total]);
+  aoa.push(['','','(Chưa gồm tên miền · Gia hạn năm 2: 2.388.000đ/năm)','']);
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:5},{wch:48},{wch:42},{wch:18}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Báo giá');
+  XLSX.writeFile(wb, `BaoGia_${kh.replace(/\s+/g,'_')}_${today.replace(/\//g,'-')}.xlsx`);
+});
+
+init();
+</script>
+</body>
+</html>
